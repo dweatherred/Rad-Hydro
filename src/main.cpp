@@ -11,7 +11,7 @@
 #include "../Lua542/include/lua.hpp"
 
 //Different Rad-Hydro Function Files
-#include "./first_order/eularian_rh.hpp"
+#include "eularian_rh_so.hpp"
 
 //This is an error check for lua
 bool CheckLua(lua_State *L, int r){
@@ -78,7 +78,7 @@ int main (){
     }
 
     //call main functions for different rad-hydro methods
-    eularian_rh(dt, ti, tf, dx, xf, n_cells);
+    so_eularian_rh(dt, ti, tf, dx, xf, n_cells);
 
 
     return 0;

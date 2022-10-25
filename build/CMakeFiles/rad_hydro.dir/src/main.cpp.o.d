@@ -425,9 +425,10 @@ CMakeFiles/rad_hydro.dir/src/main.cpp.o: \
   /Users/dylanweatherred/Documents/Rad-Hydro/src/../Lua542/include/luaconf.h \
   /Users/dylanweatherred/Documents/Rad-Hydro/src/../Lua542/include/lualib.h \
   /Users/dylanweatherred/Documents/Rad-Hydro/src/../Lua542/include/lauxlib.h \
-  /Users/dylanweatherred/Documents/Rad-Hydro/src/./first_order/eularian_rh.hpp \
+  /Users/dylanweatherred/Documents/Rad-Hydro/src/eularian_rh_so.hpp \
   /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/cmath \
   /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/math.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk/usr/include/math.h \
   /Library/Developer/CommandLineTools/SDKs/MacOSX12.3.sdk/usr/include/c++/v1/vector \
-  /Users/dylanweatherred/Documents/Rad-Hydro/src/./first_order/eularian_rh_func.hpp
+  /Users/dylanweatherred/Documents/Rad-Hydro/src/hydro_functions.hpp \
+  /Users/dylanweatherred/Documents/Rad-Hydro/src/rad_functions.hpp

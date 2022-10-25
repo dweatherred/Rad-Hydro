@@ -6,9 +6,9 @@ set xlabel "x position (cm)" font "Helvetica,22"
 set xtics font "Helvetica,20"
 set ytics font "Helvetica,20"
 #
-#set xrange[0.0:0.0]
+#set xrange[0.0:3.5]
 #set xtics 0,150,1500
-#set yrange [0:1500]
+#set yrange [1:3.5]
 #
 #set logscale y
 #set logscale x
@@ -31,28 +31,28 @@ set key left top
 set title "Rad Hydo Shock Tube Rad Vs Material Temperature"
 set ylabel "Temperature (eV)" font "Helvetica,22"
 set output "rad_hydro_shock_tube_temp.eps"
-plot "rad_hydro_shock_trying.dat" u 1:2  w lp ls 3 title "Radiation Temperature", "" u 1:3 w lp ls 2 title "Material Temperature"
+plot "rad_hydro_shock_so.dat" u 1:2  w lp ls 3 title "Radiation Temperature", "" u 1:3 w lp ls 2 title "Material Temperature"
 
 set key left top
-set title "Rad Hydo Shock Tube Density"
+set title "Density Slug @ t=1.0E-7 s w/ dt 1.0E-12"
 set ylabel "Density (g/cc)" font "Helvetica,22"
 set output "rad_hydro_shock_tube_dens.eps"
-plot "rad_hydro_shock_trying.dat" u 1:4  w lp ls 3 title "Density"
+plot "rad_hydro_shock_so.dat" u 1:4  w lp ls 3 title "Density"
 
 set key left top
 set title "Rad Hydo Shock Tube Velocity"
 set ylabel "Velocity" font "Helvetica,22"
 set output "rad_hydro_shock_tube_vel.eps"
-plot "rad_hydro_shock_trying.dat" u 1:5  w lp ls 3 title "Velocity"
+plot "rad_hydro_shock_so.dat" u 1:5  w lp ls 3 title "Velocity"
 
 set key left top
 set title "Rad Hydo Shock Tube Total Energy"
 set ylabel "Velocity" font "Helvetica,22"
 set output "rad_hydro_shock_tube_ener.eps"
-plot "rad_hydro_shock_trying.dat" u 1:6  w lp ls 3 title "Total Energy"
+plot "rad_hydro_shock_so.dat" u 1:6  w lp ls 3 title "Total Energy"
 
 set key left top
 set title "Rad Hydo Shock Tube Total Pressure"
 set ylabel "Pressure" font "Helvetica,22"
 set output "rad_hydro_shock_tube_pres.eps"
-plot "rad_hydro_shock_trying.dat" u 1:7  w lp ls 3 title "Total Pres"
+plot "rad_hydro_shock_so.dat" u 1:7  w lp ls 3 title "Total Pres"
