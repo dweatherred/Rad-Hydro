@@ -21,7 +21,7 @@ void rad_initialize(std::vector<double> &T0_r, std::vector<double> &E0_r, double
                     std::vector<double> &T0_m, std::vector<double> &E0_m, std::vector<double> &Ek,
                     std::vector<double> &Tk, std::vector<double> &opc, std::vector<double> &abs,
                     std::vector<double> &emis, std::vector<double> &rho, std::vector<double> &cv,
-                    std::vector<double> &Pr, double a, double c, double dx, double xf){
+                    std::vector<double> &Pr, double a, double c, double dx, double xf, int p){
 
     int n = abs.size();
 
@@ -29,13 +29,25 @@ void rad_initialize(std::vector<double> &T0_r, std::vector<double> &E0_r, double
     for(int j=0; j<n; j++){
 
         //Temperature
-        if((j+0.5)*dx < xf/2){
-            T0_r[j] = 100; //0.025;
-            T0_m[j] = 100; //0.025;
-        }else{
-            T0_r[j] = 119.476;  //119.476; //0.025; //366.260705;
-            T0_m[j] = 119.476; //119.476; //0.025; //366.260705;
+        if(p==0){//Mach 1.2
+            if((j+0.5)*dx < xf/2){
+                T0_r[j] = 100;
+                T0_m[j] = 100;
+            }else{
+                T0_r[j] = 119.476;
+                T0_m[j] = 119.476;
 
+            }
+        }
+        else if (p==1){//Mach 3
+            if((j+0.5)*dx < xf/2){
+                T0_r[j] = 100; //0.025;
+                T0_m[j] = 100; //0.025;
+            }else{
+                T0_r[j] = 366.260705;  //119.476; //0.025; //366.260705;
+                T0_m[j] = 366.260705; //119.476; //0.025; //366.260705;
+
+            }
         }
         //Initialize specific heat capacity in each cell
         cv[j] = evaluate_cv(T0_m[j], a);
@@ -63,8 +75,8 @@ void rad_initialize(std::vector<double> &T0_r, std::vector<double> &E0_r, double
 
 //! Radiation MMC
 
-void rad_mmc(std::vector<double> &Es_r, std::vector<double> &E0_r, std::vector<double> &Pr, 
-             std::vector<double> &grad_u, std::vector<double> &lu_Er, double dt, double dx){
+void rad_mmc(const std::vector<double> &E0_r, const std::vector<double> &Pr, const std::vector<double> &grad_u,
+             const std::vector<double> &lu_Er, std::vector<double> &Es_r, double dt, double dx){
 
     int n_cells = E0_r.size();
 
@@ -77,9 +89,9 @@ void rad_mmc(std::vector<double> &Es_r, std::vector<double> &E0_r, std::vector<d
 //!Radiation Solve
 
 // Calculate diffusion coefficients
-void setup(std::vector<double> &opc, std::vector<double> &T0_m, std::vector<double> &D, 
+void setup(std::vector<double> &opc, const std::vector<double> &T0_m, std::vector<double> &D, 
            std::vector<double> &Dp, std::vector<double> &Dm, std::vector<double> &cv,
-           double c, double a, int p=0){
+           const double c, const double a, int p=0){
 
     int n=opc.size();
 
@@ -109,8 +121,6 @@ void setup(std::vector<double> &opc, std::vector<double> &T0_m, std::vector<doub
 
     }else{ //For marshak problem
 
-        //std::cout << " Marshak Setup " << std::endl;
-
         for(int l=0; l<n; l++){
             //+1/2 and -1/2 Diffusion Terms
             if(l==n-1){
@@ -131,10 +141,8 @@ void setup(std::vector<double> &opc, std::vector<double> &T0_m, std::vector<doub
 }
 
 //Newtons Method
-void newtons(std::vector<double> &Ek, std::vector<double> &Tk, std::vector<double> &E0_r, 
-             std::vector<double> &Th, std::vector<double> &opc, const double dt, 
-             std::vector<double> &rho, std::vector<double> &cv, const double c, 
-             const double a,const int iter){
+void newtons(const std::vector<double> &Ek, const std::vector<double> &Th, const std::vector<double> &opc, const std::vector<double> &rho, 
+             const std::vector<double> &cv, std::vector<double> &Tk, const double dt, const double c, const double a, const int iter){
 
     int n=Ek.size();
     std::vector<double> dTk(n); std::vector<double> Tk1(n);
@@ -159,7 +167,7 @@ void newtons(std::vector<double> &Ek, std::vector<double> &Tk, std::vector<doubl
             //Reassign Tk as Tk+1
             Tk[i] = Tk1[i];
 
-            if(fabs(dTk[i]) < 1.0E-3){
+            if(fabs(dTk[i]) < 1.0E-10){
                 break;
             }
         }
@@ -169,10 +177,10 @@ void newtons(std::vector<double> &Ek, std::vector<double> &Tk, std::vector<doubl
 
 //Matrix setup for Implicit 1-D problem with diffusion
 
-void matrix(std::vector<double> &plus, std::vector<double> &mid, std::vector<double> &minus, std::vector<double> &rs, 
-            std::vector<double> &Tk, std::vector<double> &Es_r, std::vector<double> &opc, 
-            std::vector<double> &Dp, std::vector<double> &Dm, double dt, const double dx, const double c, const double a, 
-            int p=0){
+void matrix(const std::vector<double> &Tk, const std::vector<double> &Es_r, const std::vector<double> &opc, 
+            const std::vector<double> &Dp, const std::vector<double> &Dm, std::vector<double> &plus, 
+            std::vector<double> &mid, std::vector<double> &minus, std::vector<double> &rs, 
+            double dt, const double dx, const double c, const double a, int p=0){
 
     int n=plus.size();
 
@@ -259,8 +267,8 @@ void matrix(std::vector<double> &plus, std::vector<double> &mid, std::vector<dou
     }
 }
 
-void residual(std::vector<double> &plus, std::vector<double> &mid, std::vector<double> &minus,
-              std::vector<double> &Er, std::vector<double> &rs, std::vector<double> &res0)
+void residual(const std::vector<double> &plus, const std::vector<double> &mid, const std::vector<double> &minus,
+              const std::vector<double> &Er, const std::vector<double> &rs, std::vector<double> &res0)
 {
 
     int n=plus.size();
@@ -324,26 +332,20 @@ void thomas_alg(std::vector<double> &a, std::vector<double> &b, std::vector<doub
 }
 
 //Energy deposition step
-void e_dep(std::vector<double> &e, std::vector<double> &cv, std::vector<double> &Th, std::vector<double> &Tk){
+void e_dep(const std::vector<double> &cv, const std::vector<double> &Th, const std::vector<double> &Tk, std::vector<double> &e){
 
     int n=e.size();
 
     for(int i=0; i<n; i++){
         e[i] = e[i] + (cv[i] * (Tk[i]- Th[i]));
-
-        //std::cout << " i " << i << " e[i] " << e[i] << " cv " << cv[i] << " Tk " << Tk[i] << " Th " << Th[i] << 
-        //" (cv[i] * (Tk[i]- Th[i]) "  << cv[i] * (Tk[i]- Th[i]) << std::endl;
     }
-
-    //std::cin.get();
 }
 
 //Post Processing
-void reassign(std::vector<double> &E0_r, std::vector<double> &T0_r, std::vector<double> &E0_m, 
-              std::vector<double> &T0_m, std::vector<double> &Tk, std::vector<double> &Ek,
-              std::vector<double> &abs, std::vector<double> &emis, std::vector<double> &opc, 
-              std::vector<double> &rho, std::vector<double> &cv, std::vector<double> &Pr, 
-              std::vector<double> &Pm, std::vector<double> &P, double a, double c){
+void reassign(const std::vector<double> &Tk, const std::vector<double> &Ek, const std::vector<double> &opc, const std::vector<double> &rho,
+              const std::vector<double> &cv, std::vector<double> &E0_r, std::vector<double> &T0_r, std::vector<double> &E0_m, 
+              std::vector<double> &T0_m, std::vector<double> &abs, std::vector<double> &emis, std::vector<double> &Pr, 
+              std::vector<double> &Pm, std::vector<double> &P, const double a, const double c){
 
     int n=E0_r.size(); 
 

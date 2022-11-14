@@ -12,6 +12,7 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
     //Initialize timing
     const int n_time = tf/dt;
     double time = ti;
+    double dt_half = dt/2;
 
     //value of gamma
     double mat_gamma = 5.0/3.0;
@@ -20,10 +21,10 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
     //Constants
     const int a = 137;
     double c = 3E+10; // cm/s
-    const int n_iter = 10000000;
+    const int n_iter = 1000000000;
 
-    //constant to switch zero to marshak boundary
-    int p = 1;
+    //constant to switch inputs and boundary conditions
+    int p;
 
     //for printing to files
     std::ofstream myfile;
@@ -38,7 +39,6 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
 
     //!Predictor Values
     //Material and Total values
-    std::vector<double> m(n_cells,0); //mass in cell
     std::vector<double> v0(n_cells,0); //initial velocity in cell
     std::vector<double> v_pre(n_cells,0); //updated velocity in cell
     std::vector<double> rho0(n_cells,0); //initial density in cell
@@ -88,37 +88,38 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
 
 
     //!Initialize Values
-    rad_initialize(T0_r, E0_r, E_total, T0_m, E0_m, Ek, Tk, opc, abs, emis, rho, cv, Pr, a, c, dx, xf);
-    mat_initialize(m,v0, rho0, Pm, e0, v, e, rho, as, Pr, P, T0_m, Th, dx, mat_gamma, xf);
+    rad_initialize(T0_r, E0_r, E_total, T0_m, E0_m, Ek, Tk, opc, abs, emis, rho, cv, Pr, a, c, dx, xf, p=1); //p=0 mach 1.2 p=1 mach 3
+    mat_initialize(v0, rho0, Pm, e0, v, e, rho, as, Pr, P, T0_m, dx, mat_gamma, xf, p=1); // p=0 mach 1.2 p=1 mach 3
 
     for(int i=0; i<n_time; i++){
 
         //Hydro Step
-        eularian_reassign_so(m, v0, rho0, Pm, e0, v, e, rho, as, lu_rho, lu_v, lu_e, grad_u,mat_gamma, dx);
+        reassign(Pm, v, e, rho, v0, rho0,  e0, as, mat_gamma);
         
-        //Calculte flux values prior to hydro and rad calcs
-        flux_pre(m, v0, rho0, P, e0, v, e, rho, as, lu_rho, lu_v, lu_e, lu_Er, grad_u, E0_r, dt, mat_gamma, dx);
-        
-        eularian_calcs_pre(v0, rho0, Pm_pre, e0, v_pre, e_pre, rho_pre, lu_rho, lu_v, lu_e, Pr, grad_u, dt, dx, mat_gamma);
+        //Predictor Step
+        flux(v0, rho0, P, e0, Er, as, lu_rho, lu_v, lu_e, lu_Er, grad_u, dt, mat_gamma);
 
-        flux_cor(m, P, Pm_pre, v_pre, e_pre, rho_pre, as, lu_rho, lu_v, lu_e, lu_Er, grad_u, dt, mat_gamma, dx);
+        eularian_calcs(v0, rho0, e0, Pr, lu_rho, lu_v, lu_e, grad_u, cv, Pm_pre, v_pre, e_pre, rho_pre, P_pre, Th, dt_half, dx, mat_gamma);
 
-        eularian_calcs_cor(v0, rho0, Pm, e0, v, e, rho, lu_rho, lu_v, lu_e, Pr, grad_u, T0_m, Th, cv, dt, dx, mat_gamma);
+        //Corrector Step
+        flux(v_pre, rho_pre, P_pre, e_pre, Er, as, lu_rho, lu_v, lu_e, lu_Er, grad_u, dt, mat_gamma);
+
+        eularian_calcs(v0, rho0, e0, Pr, lu_rho, lu_v, lu_e, grad_u, cv, Pm, v, e, rho, P, Th, dt, dx, mat_gamma);
         
         //Radiation MMC step
-        rad_mmc(Es_r, E0_r, Pr, grad_u, lu_Er, dt, dx);
+        rad_mmc(E0_r, Pr, grad_u, lu_Er, Es_r, dt, dx);
 
-        //Radiation Solve
-        setup(opc, Th, D, Dp, Dm, cv, c, a);
+        //Radiation Setup
+        setup(opc, T0_m, D, Dp, Dm, cv, c, a);
 
         //Iteration Loop for implicit temp and energy
         for(int k=0; k<n_iter; k++){
 
             //Newtons method to solve for temp
-            newtons(Ek, Tk, E0_r, Th, opc, dt, rho, cv, c, a, n_iter);
+            newtons(Ek, Th, opc, rho, cv, Tk, dt, c, a, n_iter);
 
             //set up matrix
-            matrix(plus, mid, minus, rs, Tk, Es_r, opc, Dp, Dm, dt, dx, c, a, p=2); //p=0 zero boundary, p=1 marshak, p=2 reflective
+            matrix(Tk, Es_r, opc, Dp, Dm, plus, mid, minus, rs, dt, dx, c, a, p=2); //p=0 zero boundary, p=1 marshak, p=2 reflective
 
             //calculate residuals          
             residual(plus, mid, minus, Ek, rs, res0);
@@ -134,17 +135,17 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
                 Ek[y] += Er[y];
             }
 
-            if(delta_max < 1.0E-3){
+            if(delta_max < 1.0E-10){
                 break;
             }
     
         }
 
         //Energy Deposition Step
-        e_dep(e, cv, Th, Tk);
+        e_dep(cv, Th, Tk, e);
 
         //Reassign rad values
-        reassign(E0_r, T0_r, E0_m, T0_m, Tk, Ek, abs, emis, opc, rho, cv, Pr, Pm, P, a, c);
+        reassign(Tk, Ek, opc, rho, cv, E0_r, T0_r, E0_m, T0_m, abs, emis, Pr, Pm, P, a, c);
 
         double time = dt * i;
 
@@ -158,12 +159,4 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
     } 
     myfile.close();
     
-    /*
-
-    myfile.open("../results/hydro_test.dat");
-    for(int i=0; i<n_cells; i++){
-        myfile << (i*dx) << " " << e[i] << " " << rho[i] << " " << P[i] << " " << v[i] << "\n";
-    }
-    myfile.close();
-    */
 }
