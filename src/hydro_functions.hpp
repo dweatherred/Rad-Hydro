@@ -367,7 +367,7 @@ void flux(const std::vector<double> &v0, const std::vector<double> &rho0, const 
 void eularian_calcs(const std::vector<double> &v0, const std::vector<double> &rho0, const std::vector<double> &e0, const std::vector<double> &Pr,
                     const std::vector<double> &lu_rho, const std::vector<double> &lu_v, const std::vector<double> &lu_e, const std::vector<double> &grad_u,
                     const std::vector<double> &cv, std::vector<double> &Pm, std::vector<double> &v, std::vector<double> &e, std::vector<double> &rho,   
-                    std::vector<double> &P, std::vector<double> &Th, double dt, double dx, double gamma) {
+                    std::vector<double> &P, std::vector<double> &Th, std::vector<double> &as, double dt, double dx, double gamma) {
     int n = v0.size();
     for(int j=0; j<n; j++){
         rho[j] = rho0[j] * dx + dt * lu_rho[j];
@@ -387,6 +387,9 @@ void eularian_calcs(const std::vector<double> &v0, const std::vector<double> &rh
 
         //hydro temp
         Th[j] =  ie/cv[j];
+
+        //sound speed
+        as[j] = sqrt((gamma * Pm[j]) / rho[j]);
     }                    
 }
 

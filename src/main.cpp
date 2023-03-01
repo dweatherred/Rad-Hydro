@@ -1,5 +1,5 @@
 //
-// Main function file for the Lagrangian Hydrodynamics Problem. This file reads the output from Lua_Script.lua
+// Main function file for the Eularian Radiation-Hydrodynamics Problem. This file reads the output from Lua_Script.lua
 // and passes them into the appropriate functions.
 //
 

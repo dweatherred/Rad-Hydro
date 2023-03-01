@@ -88,8 +88,8 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
 
 
     //!Initialize Values
-    rad_initialize(T0_r, E0_r, E_total, T0_m, E0_m, Ek, Tk, opc, abs, emis, rho, cv, Pr, a, c, dx, xf, p=1); //p=0 mach 1.2 p=1 mach 3
-    mat_initialize(v0, rho0, Pm, e0, v, e, rho, as, Pr, P, T0_m, dx, mat_gamma, xf, p=1); // p=0 mach 1.2 p=1 mach 3
+    rad_initialize(T0_r, E0_r, E_total, T0_m, E0_m, Ek, Tk, opc, abs, emis, rho, cv, Pr, a, c, dx, xf, p=0); //p=0 mach 1.2 p=1 mach 3
+    mat_initialize(v0, rho0, Pm, e0, v, e, rho, as, Pr, P, T0_m, dx, mat_gamma, xf, p=0); // p=0 mach 1.2 p=1 mach 3
 
     for(int i=0; i<n_time; i++){
 
@@ -99,12 +99,12 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
         //Predictor Step
         flux(v0, rho0, P, e0, Er, as, lu_rho, lu_v, lu_e, lu_Er, grad_u, dt, mat_gamma);
 
-        eularian_calcs(v0, rho0, e0, Pr, lu_rho, lu_v, lu_e, grad_u, cv, Pm_pre, v_pre, e_pre, rho_pre, P_pre, Th, dt_half, dx, mat_gamma);
+        eularian_calcs(v0, rho0, e0, Pr, lu_rho, lu_v, lu_e, grad_u, cv, Pm_pre, v_pre, e_pre, rho_pre, P_pre, Th, as, dt_half, dx, mat_gamma);
 
         //Corrector Step
         flux(v_pre, rho_pre, P_pre, e_pre, Er, as, lu_rho, lu_v, lu_e, lu_Er, grad_u, dt, mat_gamma);
 
-        eularian_calcs(v0, rho0, e0, Pr, lu_rho, lu_v, lu_e, grad_u, cv, Pm, v, e, rho, P, Th, dt, dx, mat_gamma);
+        eularian_calcs(v0, rho0, e0, Pr, lu_rho, lu_v, lu_e, grad_u, cv, Pm, v, e, rho, P, Th, as, dt, dx, mat_gamma);
         
         //Radiation MMC step
         rad_mmc(E0_r, Pr, grad_u, lu_Er, Es_r, dt, dx);
@@ -152,8 +152,10 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
         std::cout << " time " << time << std::endl;
     }
     
-    myfile.open("../results/rad_hydro_shock_so.dat");
+    myfile.open("../results/rad_hydro_shock_30000_cells.dat");
     for(int i=0; i<n_cells; i++){
+
+
         myfile << i*dx << " " << T0_r[i] << " " << T0_m[i] << " " << rho[i] << " " << v[i] << " " << e[i] << " " << P[i] <<  "\n";
         
     } 
