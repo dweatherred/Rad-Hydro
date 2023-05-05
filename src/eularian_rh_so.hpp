@@ -17,11 +17,12 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
     //value of gamma
     double mat_gamma = 5.0/3.0;
     double rad_gamma = 1.4;
+    double S;
 
     //Constants
     const int a = 137;
     double c = 3E+10; // cm/s
-    const int n_iter = 1000000000;
+    const int n_iter = 1000000;
 
     //constant to switch inputs and boundary conditions
     int p;
@@ -36,6 +37,13 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
     std::vector<double> lu_w(n_cells,0);
     std::vector<double> lu_Er(n_cells);
     std::vector<double> grad_u(n_cells);
+
+    //!Initial Values That dont get edited
+    std::vector<double> v_in(n_cells,0); //velocity in cell
+    std::vector<double> rho_in(n_cells,0); // density in cell
+    std::vector<double> P_in(n_cells,0); // total pressure in cell
+    std::vector<double> e_in(n_cells,0); // energy in cell
+    std::vector<double> Er_in(n_cells,0); // Radiation energy in cell
 
     //!Predictor Values
     //Material and Total values
@@ -88,29 +96,32 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
 
 
     //!Initialize Values
-    rad_initialize(T0_r, E0_r, E_total, T0_m, E0_m, Ek, Tk, opc, abs, emis, rho, cv, Pr, a, c, dx, xf, p=0); //p=0 mach 1.2 p=1 mach 3
-    mat_initialize(v0, rho0, Pm, e0, v, e, rho, as, Pr, P, T0_m, dx, mat_gamma, xf, p=0); // p=0 mach 1.2 p=1 mach 3
+    //rad_initialize(T0_r, E0_r, E_total, T0_m, E0_m, Ek, Tk, opc, abs, emis, rho, cv, Pr, Er_in, a, c, dx, xf, p=0); //p=0 mach 1.2, p=1 mach 3, p=2 sod shock tube, p=3 marshak
+    //mat_initialize(v0, rho0, Pm, e0, v, e, rho, as, Pr, P, T0_m,  v_in, e_in, rho_in, P_in, dx, mat_gamma, xf, p=0); //p=0 mach 1.2, p=1 mach 3, p=2 sod shock tube, p=3 marshak
 
+    //!For Moving Shock
+    moving_shock_rad_init(T0_r, E0_r, E_total, T0_m, E0_m, Ek, Tk, opc, abs, emis, rho, cv, Pr, Er_in, a, c, dx, xf);
+    moving_shock_mat_init(v0, rho0, Pm, e0, v, e, rho, as, Pr, P, T0_m, cv, v_in, e_in, rho_in, P_in, S, dx, mat_gamma, xf, dt);
     for(int i=0; i<n_time; i++){
 
         //Hydro Step
         reassign(Pm, v, e, rho, v0, rho0,  e0, as, mat_gamma);
         
         //Predictor Step
-        flux(v0, rho0, P, e0, Er, as, lu_rho, lu_v, lu_e, lu_Er, grad_u, dt, mat_gamma);
+        flux(v0, rho0, P, e0, Er, v_in, e_in, rho_in, P_in, Er_in, as, lu_rho, lu_v, lu_e, lu_Er, grad_u);
 
-        eularian_calcs(v0, rho0, e0, Pr, lu_rho, lu_v, lu_e, grad_u, cv, Pm_pre, v_pre, e_pre, rho_pre, P_pre, Th, as, dt_half, dx, mat_gamma);
+        eularian_calcs(v0, rho0, e0, Pr, lu_rho, lu_v, lu_e, grad_u, cv, Pm_pre, v_pre, e_pre, rho_pre, P_pre, Th, as, dt_half, dx, mat_gamma, xf);
 
         //Corrector Step
-        flux(v_pre, rho_pre, P_pre, e_pre, Er, as, lu_rho, lu_v, lu_e, lu_Er, grad_u, dt, mat_gamma);
+        flux(v_pre, rho_pre, P_pre, e_pre, Er, v_in, e_in, rho_in, P_in, Er_in, as, lu_rho, lu_v, lu_e, lu_Er, grad_u);
 
-        eularian_calcs(v0, rho0, e0, Pr, lu_rho, lu_v, lu_e, grad_u, cv, Pm, v, e, rho, P, Th, as, dt, dx, mat_gamma);
+        eularian_calcs(v0, rho0, e0, Pr, lu_rho, lu_v, lu_e, grad_u, cv, Pm, v, e, rho, P, Th, as, dt, dx, mat_gamma, xf);
         
         //Radiation MMC step
         rad_mmc(E0_r, Pr, grad_u, lu_Er, Es_r, dt, dx);
 
         //Radiation Setup
-        setup(opc, T0_m, D, Dp, Dm, cv, c, a);
+        setup(opc, T0_m, D, Dp, Dm, cv, c, a, p=0); //p=0 sod and fixed shock, p=2 marshak
 
         //Iteration Loop for implicit temp and energy
         for(int k=0; k<n_iter; k++){
@@ -135,29 +146,34 @@ void so_eularian_rh(double dt, double ti, double tf, double dx, double xf, int n
                 Ek[y] += Er[y];
             }
 
-            if(delta_max < 1.0E-10){
+            if(delta_max < 1.0E-5){
                 break;
             }
-    
         }
 
         //Energy Deposition Step
         e_dep(cv, Th, Tk, e);
 
         //Reassign rad values
-        reassign(Tk, Ek, opc, rho, cv, E0_r, T0_r, E0_m, T0_m, abs, emis, Pr, Pm, P, a, c);
+        reassign(Tk, Ek, opc, rho, cv, E0_r, T0_r, E0_m, T0_m, abs, emis, Pr, Pm, P, a, c, p=0); //p=2 sod shock, p=0 else
 
         double time = dt * i;
 
         std::cout << " time " << time << std::endl;
     }
     
-    myfile.open("../results/rad_hydro_shock_30000_cells.dat");
+    /*
+    myfile.open("../results/Mach_3_rad_hydro_shock_15000.dat");
     for(int i=0; i<n_cells; i++){
-
-
         myfile << i*dx << " " << T0_r[i] << " " << T0_m[i] << " " << rho[i] << " " << v[i] << " " << e[i] << " " << P[i] <<  "\n";
         
+    } 
+    myfile.close();
+    */
+
+    myfile.open("../results/FM_moving_shock_15000.dat");
+    for(int i=0; i<n_cells; i++){
+        myfile << i*dx << " " << T0_r[i] << " " << T0_m[i] << " " << "\n";
     } 
     myfile.close();
     
