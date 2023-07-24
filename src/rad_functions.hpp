@@ -5,11 +5,15 @@
 #include <vector>
 
 //!Initialize Radiaition and Material Properties
-double evaluate_opc(const double T){
+double evaluate_sigma_a(const double T, const double rho){
     
-    return 577.35; //pow(T, 3); //577.35; //788; // 1.0E+6/ pow(T, 3);
+    return pow(rho,2) * 4.494E+8/pow(T,3.5);  //pow(T, 3); //577.35; //788; // 1.0E+6/ pow(T, 3); pow(rho,2) * 4.494E+8/pow(T,3.5);
 }
 
+double evaluate_sigma_s(const double T, const double rho){
+    
+    return rho * 0.4006; //pow(T, 3); //577.35; //788; // 1.0E+6/ pow(T, 3);
+}
 
 double evaluate_cv(const double T, double a){
     
@@ -19,9 +23,10 @@ double evaluate_cv(const double T, double a){
 
 void rad_initialize(std::vector<double> &T0_r, std::vector<double> &E0_r, double E_total,
                     std::vector<double> &T0_m, std::vector<double> &E0_m, std::vector<double> &Ek,
-                    std::vector<double> &Tk, std::vector<double> &opc, std::vector<double> &abs,
-                    std::vector<double> &emis, std::vector<double> &rho, std::vector<double> &cv,
-                    std::vector<double> &Pr, std::vector<double> &Er_in, double a, double c, double dx, double xf, int p){
+                    std::vector<double> &Tk, std::vector<double> &sigma_a, std::vector<double> &sigma_s, 
+                    std::vector<double> &sigma_t, std::vector<double> &abs, std::vector<double> &emis,
+                    std::vector<double> &rho, std::vector<double> &cv, std::vector<double> &Pr, 
+                    std::vector<double> &Er_in, double a, double c, double dx, double xf, int p){
 
     int n = abs.size();
 
@@ -43,10 +48,18 @@ void rad_initialize(std::vector<double> &T0_r, std::vector<double> &E0_r, double
                 T0_r[j] = 366.260705;
                 T0_m[j] = 366.260705;
             }
-        }else if(p==2){//Sod Shock Tube
+        }else if(p==2){//Mach 45
+            if((j+0.5)*dx < xf/2){
+                T0_r[j] = 100;
+                T0_m[j] = 100;
+            }else{
+                T0_r[j] = 8.357785413124984E+03;
+                T0_m[j] = 8.357785413124984E+03;
+            }
+        }else if(p==3){//Sod Shock Tube
             T0_r[j] = 0;
             T0_m[j] = 0;
-        }else if(p==3){//Marshak
+        }else if(p==4){//Marshak
             T0_r[j] = 0.025;
             T0_m[j] = 0.025;
         }
@@ -60,18 +73,16 @@ void rad_initialize(std::vector<double> &T0_r, std::vector<double> &E0_r, double
         Er_in[j] = E0_r[j];
 
         //Inital opacity in each cell
-        opc[j] = evaluate_opc(T0_m[j]);
-
-        //Abs and Emis
-        abs[j] = opc[j] * c * E0_r[j];
-        emis[j] = opc[j] * a * c * pow(T0_m[j],4);
+        sigma_a[j] = evaluate_sigma_a(T0_m[j], rho[j]);
+        sigma_s[j] = evaluate_sigma_a(T0_m[j], rho[j]);
+        sigma_t[j] = sigma_s[j] + sigma_a[j];
 
         //Ek and Tk for Newton's Method
         Ek[j] = E0_r[j];
         Tk[j] = T0_m[j];
 
         //Radiation Pressure
-        if (p==2){
+        if (p==3){
             Pr[j] = 0;
         }
         else{
@@ -81,9 +92,10 @@ void rad_initialize(std::vector<double> &T0_r, std::vector<double> &E0_r, double
 }
 void moving_shock_rad_init(std::vector<double> &T0_r, std::vector<double> &E0_r, double E_total,
                            std::vector<double> &T0_m, std::vector<double> &E0_m, std::vector<double> &Ek,
-                           std::vector<double> &Tk, std::vector<double> &opc, std::vector<double> &abs,
-                           std::vector<double> &emis, std::vector<double> &rho, std::vector<double> &cv,
-                           std::vector<double> &Pr, std::vector<double> &Er_in, double a, double c, double dx, double xf){
+                           std::vector<double> &Tk, std::vector<double> &sigma_a, std::vector<double> &sigma_s, 
+                           std::vector<double> &sigma_t, std::vector<double> &abs, std::vector<double> &emis, 
+                           std::vector<double> &rho, std::vector<double> &cv, std::vector<double> &Pr, 
+                           std::vector<double> &Er_in, double a, double c, double dx, double xf){
     int n = abs.size();
     int q=0;
 
@@ -98,15 +110,15 @@ void moving_shock_rad_init(std::vector<double> &T0_r, std::vector<double> &E0_r,
 
         //Initialize specific heat capacity and opacitu in each cell
         cv[j] = evaluate_cv(T0_m[j], a);
-        opc[j] = evaluate_opc(T0_m[j]);
+        sigma_a[j] = evaluate_sigma_a(T0_m[j], rho[j]);
+        sigma_s[j] = evaluate_sigma_a(T0_m[j], rho[j]);
+        sigma_t[j] = sigma_s[j] + sigma_a[j];
         //Energy
         E0_r[j] = (a * pow(T0_r[j],4)); // erg/cc
         E0_m[j] = rho[j] * cv[j] * T0_m[j]; // erg/cc
         E_total = E0_r[j] + (rho[j] * cv[j] * T0_m[j]);
         Er_in[j] = E0_r[j];
-        //Abs and Emis
-        abs[j] = opc[j] * c * E0_r[j];
-        emis[j] = opc[j] * a * c * pow(T0_m[j],4);
+
         //Ek and Tk for Newton's Method
         Ek[j] = E0_r[j];
         Tk[j] = T0_m[j];
@@ -129,17 +141,20 @@ void rad_mmc(const std::vector<double> &E0_r, const std::vector<double> &Pr, con
 
 //!Radiation Energy Density and Material Temperature Solve
 // Calculate diffusion coefficients
-void setup(std::vector<double> &opc, const std::vector<double> &T0_m, std::vector<double> &D, 
-           std::vector<double> &Dp, std::vector<double> &Dm, std::vector<double> &cv,
-           const double c, const double a, int p){
+void setup(std::vector<double> &sigma_a, std::vector<double> &sigma_s, std::vector<double> &sigma_t, 
+           const std::vector<double> &T0_m, std::vector<double> &D, std::vector<double> &Dp, 
+           std::vector<double> &Dm, std::vector<double> &cv, std::vector<double> &rho, const double c, 
+           const double a, int p){
 
-    int n=opc.size();
+    int n=sigma_a.size();
 
     //Setup Loop (Diffusion Coefficients and Opacity), Constant over timestep
     for(int i=0; i<n; i++){
-        opc[i] = evaluate_opc(T0_m[i]);
+        sigma_a[i] = evaluate_sigma_a(T0_m[i], rho[i]);
+        sigma_s[i] = evaluate_sigma_a(T0_m[i], rho[i]);
+        sigma_t[i] = sigma_s[i] + sigma_a[i];
         cv[i] = evaluate_cv(T0_m[i], a);
-        D[i] = c /(3 * opc[i]);
+        D[i] = c /(3 * sigma_t[i]);
     }
 
     if(p ==0){
@@ -164,21 +179,27 @@ void setup(std::vector<double> &opc, const std::vector<double> &T0_m, std::vecto
                 Dp[l] = D[l];
             }else{
                 double Tf = (T0_m[l] + T0_m[l+1]) * 0.5; 
-                Dp[l] = c/(3 * evaluate_opc(Tf));
+                sigma_a[l] = evaluate_sigma_a(Tf, rho[l]);
+                sigma_s[l] = evaluate_sigma_a(Tf, rho[l]);
+                sigma_t[l] = sigma_s[l] + sigma_a[l];
+                Dp[l] = c/(3 * sigma_t[l]);
             }
 
             if(l==0){
                 Dm[l] = D[l];
             }else{
                 double Tf = (T0_m[l] + T0_m[l-1]) * 0.5;
-                Dm[l] = c/(3 * evaluate_opc(Tf));
+                sigma_a[l] = evaluate_sigma_a(Tf, rho[l]);
+                sigma_s[l] = evaluate_sigma_a(Tf, rho[l]);
+                sigma_t[l] = sigma_s[l] + sigma_a[l];
+                Dm[l] = c/(3 * sigma_t[l]);
             }
         }
     }
 }
 
 //Newtons Method
-void newtons(const std::vector<double> &Ek, const std::vector<double> &Th, const std::vector<double> &opc, const std::vector<double> &rho, 
+void newtons(const std::vector<double> &Ek, const std::vector<double> &Th, const std::vector<double> &sigma_a, const std::vector<double> &rho, 
              const std::vector<double> &cv, std::vector<double> &Tk, const double dt, const double c, const double a, const int iter){
 
     int n=Ek.size();
@@ -190,10 +211,10 @@ void newtons(const std::vector<double> &Ek, const std::vector<double> &Th, const
         for(int k=0; k<iter; k++){
 
             //Calculate FT with "known" Ek and guess "Tk"
-            FT[i] = ((rho[i] * cv[i]) * ((Tk[i] - Th[i])/dt)) - (opc[i] * c * Ek[i]) + (opc[i] * a * c * pow(Tk[i],4));
+            FT[i] = ((rho[i] * cv[i]) * ((Tk[i] - Th[i])/dt)) - (sigma_a[i] * c * Ek[i]) + (sigma_a[i] * a * c * pow(Tk[i],4));
 
             //Derivative of FT with respect to Tk
-            dTT[i] = ((rho[i] * cv[i]) / dt) + (4 * opc[i] * c * a * pow(Tk[i], 3));
+            dTT[i] = ((rho[i] * cv[i]) / dt) + (4 * sigma_a[i] * c * a * pow(Tk[i], 3));
 
             //Solve for dTk
             dTk[i] = -FT[i] / dTT[i];
@@ -213,7 +234,7 @@ void newtons(const std::vector<double> &Ek, const std::vector<double> &Th, const
 
 //Matrix setup for Implicit 1-D problem with diffusion
 
-void matrix(const std::vector<double> &Tk, const std::vector<double> &Es_r, const std::vector<double> &opc, 
+void matrix(const std::vector<double> &Tk, const std::vector<double> &Es_r, const std::vector<double> &sigma_a, 
             const std::vector<double> &Dp, const std::vector<double> &Dm, std::vector<double> &plus, 
             std::vector<double> &mid, std::vector<double> &minus, std::vector<double> &rs, 
             double dt, const double dx, const double c, const double a, int p=0){
@@ -225,11 +246,11 @@ void matrix(const std::vector<double> &Tk, const std::vector<double> &Es_r, cons
             //upper diagonal
             plus[i] = -Dp[i] / pow(dx,2); 
             //main Diagonal
-            mid[i] = 1/dt + Dp[i]/pow(dx,2) + Dm[i]/pow(dx,2) + (opc[i] * c);
+            mid[i] = 1/dt + Dp[i]/pow(dx,2) + Dm[i]/pow(dx,2) + (sigma_a[i] * c);
             //lower diagonal
             minus[i] = -Dm[i] / pow(dx,2);
             //Right Side of Equation
-            rs[i] = (opc[i] * a * c * pow(Tk[i],4)) + (Es_r[i]/dt);            
+            rs[i] = (sigma_a[i] * a * c * pow(Tk[i],4)) + (Es_r[i]/dt);            
         }
     }else if (p==1) {//Marshak wave boundary conditon
         for(int j=0; j<n; j++){
@@ -237,50 +258,84 @@ void matrix(const std::vector<double> &Tk, const std::vector<double> &Es_r, cons
             plus[j] = -Dp[j] / pow(dx,2); 
             //main Diagonal
             if(j==0){
-                mid[j] = 1/dt + c/(2*dx) + Dp[j]/pow(dx,2) + (opc[j] * c);
+                mid[j] = 1/dt + c/(2*dx) + Dp[j]/pow(dx,2) + (sigma_a[j] * c);
             }else{
-                mid[j] = 1/dt + Dp[j]/pow(dx,2) + Dm[j]/pow(dx,2) + (opc[j] * c);
+                mid[j] = 1/dt + Dp[j]/pow(dx,2) + Dm[j]/pow(dx,2) + (sigma_a[j] * c);
             }
             //lower diagonal
             minus[j] = -Dm[j] / pow(dx,2);
             //Right Side of Equation
             if(j==0){
-                rs[j] = opc[j] * a * c * pow(Tk[j],4) + ( c * a * pow(150,4) * 0.5 )/dx  + Es_r[j]/dt;
+                rs[j] = sigma_a[j] * a * c * pow(Tk[j],4) + ( c * a * pow(150,4) * 0.5 )/dx  + Es_r[j]/dt;
             }else{
-                rs[j] = (opc[j] * a * c * pow(Tk[j],4)) + (Es_r[j]/dt);
+                rs[j] = (sigma_a[j] * a * c * pow(Tk[j],4)) + (Es_r[j]/dt);
             }
         }
-    }else{ //Reflected Boundary Condition
+    }else if(p==2){ //Reflected Boundary Condition
         for(int i=0; i<n; i++){
             if(i==0){
                 //upper diagonal
                 plus[i] = -Dp[i] / pow(dx,2); 
                 //main Diagonal
-                mid[i] = 1/dt + Dp[i]/pow(dx,2) + (opc[i] * c);
+                mid[i] = 1/dt + Dp[i]/pow(dx,2) + (sigma_a[i] * c);
                 //lower diagonal
                 minus[i] = 0;
                 //Right Side of Equation
-                rs[i] = (opc[i] * a * c * pow(Tk[i],4)) + (Es_r[i]/dt);
+                rs[i] = (sigma_a[i] * a * c * pow(Tk[i],4)) + (Es_r[i]/dt);
             }else if (i==n-1){
                 //upper diagonal
                 plus[i] = 0; 
                 //main Diagonal
-                mid[i] =  1/dt + Dm[i]/pow(dx,2) + (opc[i] * c);
+                mid[i] =  1/dt + Dm[i]/pow(dx,2) + (sigma_a[i] * c);
                 //lower diagonal
                 minus[i] =  -Dm[i] / pow(dx,2);
                 //Right Side of Equation
-                rs[i] = (opc[i] * a * c * pow(Tk[i],4)) + (Es_r[i]/dt);
+                rs[i] = (sigma_a[i] * a * c * pow(Tk[i],4)) + (Es_r[i]/dt);
             }else{
                 //upper diagonal
                 plus[i] = -Dp[i] / pow(dx,2); 
                 //main Diagonal
-                mid[i] = 1/dt + Dp[i]/pow(dx,2) + Dm[i]/pow(dx,2) + (opc[i] * c);
+                mid[i] = 1/dt + Dp[i]/pow(dx,2) + Dm[i]/pow(dx,2) + (sigma_a[i] * c);
                 //lower diagonal
                 minus[i] = -Dm[i] / pow(dx,2);
                 //Right Side of Equation
-                rs[i] = (opc[i] * a * c * pow(Tk[i],4)) + (Es_r[i]/dt);
+                rs[i] = (sigma_a[i] * a * c * pow(Tk[i],4)) + (Es_r[i]/dt);
             }
         }
+    }else if(p==3){ //inflow outflow
+        double T_l_incident = 100;
+        for(int i=0; i<n; i++){
+            //inflow to left boundary
+            if(i==0){
+                //upper diagonal
+                plus[i] = -Dp[i] / pow(dx,2); 
+                //middle
+                mid[i] = 1/dt + c/(2*dx) + Dp[i]/pow(dx,2) + (sigma_a[i] * c);
+                //lower diagonal
+                minus[i] = -Dm[i] / pow(dx,2);
+                //right hand side
+                rs[i] = sigma_a[i] * a * c * pow(Tk[i],4) + (c * a * pow(T_l_incident,4) * 0.5 )/dx  + Es_r[i]/dt;
+            }else if(i==n-1){
+                 //upper diagonal
+                plus[i] = 0; 
+                //main Diagonal
+                mid[i] =  1/dt + Dm[i]/pow(dx,2) + (sigma_a[i] * c);
+                //lower diagonal
+                minus[i] =  -Dm[i] / pow(dx,2);
+                //Right Side of Equation
+                rs[i] = (sigma_a[i] * a * c * pow(Tk[i],4)) + (Es_r[i]/dt);
+            }else{
+                //upper diagonal
+                plus[i] = -Dp[i] / pow(dx,2); 
+                //main Diagonal
+                mid[i] = 1/dt + Dp[i]/pow(dx,2) + Dm[i]/pow(dx,2) + (sigma_a[i] * c);
+                //lower diagonal
+                minus[i] = -Dm[i] / pow(dx,2);
+                //Right Side of Equation
+                rs[i] = (sigma_a[i] * a * c * pow(Tk[i],4)) + (Es_r[i]/dt);
+            }
+        }
+
     }
 }
 
@@ -355,9 +410,9 @@ void e_dep(const std::vector<double> &cv, const std::vector<double> &Th, const s
 }
 
 //Post Processing
-void reassign(const std::vector<double> &Tk, const std::vector<double> &Ek, const std::vector<double> &opc, const std::vector<double> &rho,
-              const std::vector<double> &cv, std::vector<double> &E0_r, std::vector<double> &T0_r, std::vector<double> &E0_m, 
-              std::vector<double> &T0_m, std::vector<double> &abs, std::vector<double> &emis, std::vector<double> &Pr, 
+void reassign(const std::vector<double> &Tk, const std::vector<double> &Ek, const std::vector<double> &rho,
+              const std::vector<double> &cv, std::vector<double> &E0_r, std::vector<double> &T0_r, 
+              std::vector<double> &E0_m, std::vector<double> &T0_m, std::vector<double> &Pr, 
               std::vector<double> &Pm, std::vector<double> &P, const double a, const double c, int p){
 
     int n=E0_r.size(); 
@@ -369,10 +424,6 @@ void reassign(const std::vector<double> &Tk, const std::vector<double> &Ek, cons
         //Material Terms
         T0_m[q] = Tk[q];
         E0_m[q] = rho[q] * cv[q] * T0_m[q];
-
-        //Absorption and Emission Terms
-        abs[q] = opc[q] * c * E0_r[q];
-        emis[q] = opc[q] * a * c * pow(T0_m[q], 4); 
         
         //Radiation Pressure
         if (p==2){

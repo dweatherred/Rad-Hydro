@@ -13,9 +13,12 @@ void mat_initialize(std::vector<double> &v0, std::vector<double> &rho0, std::vec
     int n_cells = v0.size();
     double ie;
 
+    //Gas Constant erg/eV/mol
+    double R = 8.315E+07 * 11606;
+
     for(int i=0; i<n_cells; i++){
         if(p==0){ // Mach 1.2 Problem
-            if((i+0.5)*dx < xf/2){
+            if(i*dx < xf/2){
                 rho0[i] = 1;
                 rho[i] = rho0[i];
                 e0[i] = 2.60510396E+14/rho0[i];
@@ -32,7 +35,7 @@ void mat_initialize(std::vector<double> &v0, std::vector<double> &rho0, std::vec
             }
         }
         else if (p==1){ //Mach 3 Problem
-            if((i+0.5)*dx < xf/2){
+            if(i*dx < xf/2){
                 rho0[i] = 1;
                 rho[i] = rho0[i];
                 e0[i] = 8.68367987E+14/rho0[i];
@@ -48,9 +51,30 @@ void mat_initialize(std::vector<double> &v0, std::vector<double> &rho0, std::vec
                 v[i] = v0[i];
             }
         }
-        else if (p==2){ //Sod Shock Tube
+        else if (p==2){ //Mach 45 Problem
+            if(i*dx < xf/2){
+                rho0[i] = 1;
+                rho[i] = rho0[i];
+                Pm[i] = R * rho0[i] * T0_m[i];
+                as[i] = sqrt(gamma*(Pm[i]/rho[i]));
+                v0[i] = 45 / as[i];
+                v[i] = v0[i];
+                e0[i] = 1.446718128E+14 + (0.5*pow(v0[i],2));
+                e[i] = e0[i];
+            }else{
+                rho0[i] = 6.0281;
+                rho[i] = rho0[i];
+                Pm[i] = R * rho0[i] * T0_m[i];
+                as[i] = sqrt(gamma*(Pm[i]/rho[i]));
+                v0[i] = 45 / as[i];
+                v[i] = v0[i];
+                e0[i] = 1.220034102E+16 + (0.5*pow(v0[i],2)); 
+                e[i] = e0[i];
+            }
+        }
+        else if (p==3){ //Sod Shock Tube
 
-            if((i + 0.5)*dx < 0.5){
+            if(i*dx < xf/2.0){
                 rho0[i] = 1.0;
                 rho[i] = rho0[i];
                 v0[i] = 0;
@@ -68,7 +92,7 @@ void mat_initialize(std::vector<double> &v0, std::vector<double> &rho0, std::vec
                 e[i] = e0[i];
             }
         }
-        else if (p==3){ //Marshak
+        else if (p==4){ //Marshak
             rho0[i] = 1;
             rho[i] = rho0[i];
             v0[i] = 0;
@@ -147,7 +171,10 @@ void moving_shock_mat_init(std::vector<double> &v0, std::vector<double> &rho0, s
         v_in[i] = v0[i];
         e_in[i] = e0[i];
         P_in[i] = P[i];
+
+        std::cout << " i " << i << " v " << v[i] << " rho " << rho[i] << " P " << P[i] << " e0 " << e[i] << std::endl;
     }
+    std::cin.get();
 }
 
 void flux(const std::vector<double> &v0, const std::vector<double> &rho0, const std::vector<double> &P, const std::vector<double> &e0, 
@@ -393,7 +420,6 @@ void flux(const std::vector<double> &v0, const std::vector<double> &rho0, const 
         //grad(u) term
         grad_u[i] = (Frus_u_r[i] - Frus_u_l[i]);
     }
-
 }
 
 void eularian_calcs(const std::vector<double> &v0, const std::vector<double> &rho0, const std::vector<double> &e0, const std::vector<double> &Pr,
@@ -422,7 +448,10 @@ void eularian_calcs(const std::vector<double> &v0, const std::vector<double> &rh
 
         //sound speed
         as[j] = sqrt((gamma * Pm[j]) / rho[j]);
-    }                    
+
+        //std::cout << " i " << j << " rho " << rho[j] << " v " << v[j] << " e " << e[j] << " Pm " << Pm[j] << " as " << as[j] << " Th " << Th[j] << std::endl; 
+    }            
+    //std::cin.get();        
 }
 
 void reassign(const std::vector<double> &Pm, const std::vector<double> &v, const std::vector<double> &e, const std::vector<double> &rho,

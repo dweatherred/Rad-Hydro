@@ -1,13 +1,13 @@
 
 timing = {}
-timing["dt"] = 1.0E-13
+timing["dt"] = 1.0E-12
 timing["time_initial"] = 0
-timing["time_final"] = 1.0E-7;
+timing["time_final"] = 70.0E-9
 
 spatial_cells = {}
 spatial_cells["xi"] = 0 --cm
-spatial_cells["xf"] = 0.2 --cm
-spatial_cells["num_cells"] = 15000
+spatial_cells["xf"] = 2400 --cm
+spatial_cells["num_cells"] = 2000
 
 --[[
 Sod Shock
